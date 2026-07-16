@@ -1,5 +1,6 @@
 
 fastapi
-uvicorn[standard]
-python-dotenv
+uvicorn
 supabase
+python-dotenv
+requests
