@@ -1,32 +1,14 @@
-from fastapi import FastAPI, HTTPException
-
-from services.database import supabase
+from fastapi import FastAPI
 
 app = FastAPI(
-    title="TRINETRA API",
-    description="AI-powered cyber resilience backend",
-    version="1.0.0",
+    title="TRINETRA AI",
+    version="1.0.0"
 )
 
 
 @app.get("/")
-def root():
+def home():
     return {
-        "project": "TRINETRA",
-        "status": "running",
-        "message": "Backend is working successfully",
+        "project": "TRINETRA AI",
+        "status": "Backend Running"
     }
-
-
-@app.get("/health")
-def health_check():
-    return {"status": "healthy"}
-
-
-@app.get("/devices")
-def get_devices():
-    try:
-        response = supabase.table("devices").select("*").execute()
-        return {"devices": response.data}
-    except Exception as error:
-        raise HTTPException(status_code=500, detail=str(error))
