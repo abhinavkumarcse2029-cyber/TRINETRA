@@ -1,0 +1,22 @@
+"""
+TRINETRA - Raspberry Pi Configuration
+------------------------------------
+This file stores all configuration used by the Raspberry Pi Edge Gateway.
+Change values here instead of modifying other files.
+"""
+
+# Device Identity
+DEVICE_ID = "ESP-01"
+DEVICE_NAME = "Critical IoT Controller"
+
+# Backend Configuration
+# Replace with your laptop's IP when running on the Raspberry Pi.
+BACKEND_URL = "http://127.0.0.1:8000"
+
+# Time (seconds)
+TELEMETRY_INTERVAL = 5
+COMMAND_CHECK_INTERVAL = 2
+
+# Project Information
+PROJECT_NAME = "TRINETRA"
+EDGE_NODE = "Raspberry Pi 4"
