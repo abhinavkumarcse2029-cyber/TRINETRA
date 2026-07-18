@@ -54,7 +54,9 @@ def complete_command(
     try:
         payload = {
             "status": "completed",
-            "response": response_message
+            "response": {
+                "message": response_message
+            }
         }
 
         response = requests.post(
