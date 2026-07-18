@@ -21,7 +21,7 @@ def get_pending_command():
 
         response = requests.get(
             f"{BACKEND_URL}/commands/{DEVICE_ID}/pending?claim=true",
-            timeout=5
+            timeout=20
         )
 
         if response.status_code != 200:
@@ -56,7 +56,7 @@ def complete_command(command_id, response_message="Executed Successfully"):
         requests.post(
             f"{BACKEND_URL}/commands/{command_id}/complete",
             json=payload,
-            timeout=5
+            timeout=20
         )
 
     except Exception as error:

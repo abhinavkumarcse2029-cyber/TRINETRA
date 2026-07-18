@@ -62,6 +62,28 @@ def update_device_risk(
     return response.data
 
 
+def set_device_quarantine(
+    device_id: str,
+    quarantined: bool,
+    reason: str | None = None
+):
+    status = "quarantined" if quarantined else "online"
+
+    response = (
+        supabase
+        .table("devices")
+        .update({
+            "is_quarantined": quarantined,
+            "quarantine_reason": reason,
+            "status": status
+        })
+        .eq("device_id", device_id)
+        .execute()
+    )
+
+    return response.data
+
+
 # -------------------------------
 # Telemetry Operations
 # -------------------------------
@@ -93,6 +115,21 @@ def insert_alert(data: dict):
 
 
 # -------------------------------
+# Incident Operations
+# -------------------------------
+
+def insert_incident(incident_data: dict):
+    response = (
+        supabase
+        .table("incidents")
+        .insert(incident_data)
+        .execute()
+    )
+
+    return response.data
+
+
+# -------------------------------
 # Audit Operations
 # -------------------------------
 
@@ -101,53 +138,6 @@ def insert_audit_log(data: dict):
         supabase
         .table("audit_logs")
         .insert(data)
-        .execute()
-    )
-
-    return response.data
-    def set_device_quarantine(
-    device_id: str,
-    quarantined: bool,
-    reason: str | None = None
-):
-     response = (
-        supabase
-        .table("devices")
-        .update({
-            "is_quarantined": quarantined,
-            "quarantine_reason": reason,
-            "status": "warning" if quarantined else "online"
-        })
-        .eq("device_id", device_id)
-        .execute()
-    )
-
-    return response.data
-def set_device_quarantine(
-    device_id: str,
-    quarantined: bool,
-    reason: str | None = None
-):
-    status = "quarantined" if quarantined else "online"
-
-    response = (
-        supabase
-        .table("devices")
-        .update({
-            "is_quarantined": quarantined,
-            "quarantine_reason": reason,
-            "status": status
-        })
-        .eq("device_id", device_id)
-        .execute()
-    )
-
-    return response.data
-def insert_incident(incident_data):
-    response = (
-        supabase
-        .table("incidents")
-        .insert(incident_data)
         .execute()
     )
 

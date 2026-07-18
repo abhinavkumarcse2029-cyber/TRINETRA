@@ -7,6 +7,7 @@ to the TRINETRA backend.
 
 import os
 import socket
+
 import psutil
 import requests
 
@@ -64,9 +65,9 @@ def send_telemetry():
         telemetry = collect_telemetry()
 
         response = requests.post(
-            f"{BACKEND_URL}/telemetry",
+            f"{BACKEND_URL}/telemetry/",
             json=telemetry,
-            timeout=5
+            timeout=20
         )
 
         if response.status_code in (200, 201):
