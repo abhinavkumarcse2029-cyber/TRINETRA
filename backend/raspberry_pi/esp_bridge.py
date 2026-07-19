@@ -1,14 +1,18 @@
 """
 TRINETRA - ESP8266 Bridge
 -------------------------
-Handles communication between the Raspberry Pi
-and the ESP8266 device.
-
-For now, commands are simulated.
-Later, this file will send real commands using Serial/UART.
+Handles real UART communication between
+the Raspberry Pi and ESP8266 device.
 """
 
 import time
+
+import serial
+
+
+SERIAL_PORT = "/dev/serial0"
+BAUD_RATE = 9600
+SERIAL_TIMEOUT = 5
 
 
 SUPPORTED_COMMANDS = {
@@ -16,49 +20,108 @@ SUPPORTED_COMMANDS = {
     "RESTORE",
     "REQUEST_TELEMETRY",
     "RESTART",
-    "SECURITY_SCAN"
+    "SECURITY_SCAN",
 }
 
 
 def send_command_to_esp(command_name):
     """
-    Send a command to the ESP8266.
-
-    Currently this function simulates execution.
-    Later we will replace the simulation with Serial/UART communication.
+    Send a command to the ESP8266 through UART
+    and return the ESP8266 response.
     """
+
+    command_name = str(command_name).strip().upper()
 
     if command_name not in SUPPORTED_COMMANDS:
         return {
             "success": False,
-            "message": f"Unsupported command: {command_name}"
+            "message": f"Unsupported command: {command_name}",
         }
 
-    print(f"[ESP Bridge] Sending command: {command_name}")
+    serial_connection = None
 
-    time.sleep(1)
+    try:
+        serial_connection = serial.Serial(
+            port=SERIAL_PORT,
+            baudrate=BAUD_RATE,
+            timeout=SERIAL_TIMEOUT,
+            write_timeout=SERIAL_TIMEOUT,
+        )
 
-    if command_name == "QUARANTINE":
-        message = "ESP8266 network access restricted"
+        # Allow serial connection to stabilize
+        time.sleep(0.3)
 
-    elif command_name == "RESTORE":
-        message = "ESP8266 restored to normal operation"
+        # Remove old READY/debug messages from the buffer
+        serial_connection.reset_input_buffer()
+        serial_connection.reset_output_buffer()
 
-    elif command_name == "REQUEST_TELEMETRY":
-        message = "ESP8266 telemetry requested"
+        print(f"[ESP Bridge] Sending command: {command_name}")
 
-    elif command_name == "RESTART":
-        message = "ESP8266 restart command executed"
+        command_bytes = f"{command_name}\n".encode("utf-8")
 
-    elif command_name == "SECURITY_SCAN":
-        message = "ESP8266 security scan completed"
+        serial_connection.write(command_bytes)
+        serial_connection.flush()
 
-    else:
-        message = "Command executed"
+        response = serial_connection.readline().decode(
+            "utf-8",
+            errors="replace",
+        ).strip()
 
-    print(f"[ESP Bridge] {message}")
+        if not response:
+            return {
+                "success": False,
+                "message": (
+                    "ESP8266 did not respond within "
+                    f"{SERIAL_TIMEOUT} seconds"
+                ),
+            }
 
-    return {
-        "success": True,
-        "message": message
-    }
+        print(f"[ESP Bridge] Raw response: {response}")
+
+        response_parts = response.split("|", 2)
+
+        if len(response_parts) < 2:
+            return {
+                "success": False,
+                "message": f"Invalid ESP8266 response: {response}",
+            }
+
+        response_status = response_parts[0]
+
+        if len(response_parts) == 3:
+            response_message = response_parts[2]
+        else:
+            response_message = response
+
+        if response_status == "OK":
+            return {
+                "success": True,
+                "message": response_message,
+                "raw_response": response,
+            }
+
+        return {
+            "success": False,
+            "message": response_message,
+            "raw_response": response,
+        }
+
+    except serial.SerialException as error:
+        print(f"[ESP Bridge] Serial error: {error}")
+
+        return {
+            "success": False,
+            "message": f"ESP8266 serial communication failed: {error}",
+        }
+
+    except Exception as error:
+        print(f"[ESP Bridge] Unexpected error: {error}")
+
+        return {
+            "success": False,
+            "message": f"ESP8266 communication error: {error}",
+        }
+
+    finally:
+        if serial_connection is not None and serial_connection.is_open:
+            serial_connection.close()
