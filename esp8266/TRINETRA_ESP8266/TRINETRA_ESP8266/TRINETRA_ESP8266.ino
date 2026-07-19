@@ -1,29 +1,37 @@
 /*
-  TRINETRA - ESP8266 Firmware
-  --------------------------
-  Raspberry Pi se UART commands receive karta hai
-  aur command execution response wapas bhejta hai.
+  TRINETRA - ESP8266 Hardware UART Firmware
+  -----------------------------------------
+  Raspberry Pi se commands receive karta hai
+  aur response UART ke through wapas bhejta hai.
 
-  Raspberry Pi communication pins:
-  D6 = RX
-  D5 = TX
+  Final ESP8266 pins:
+  D7 / GPIO13 = RX
+  D8 / GPIO15 = TX
+
+  Raspberry Pi TX -> ESP8266 D7
+  Raspberry Pi RX <- ESP8266 D8
+  Raspberry Pi GND -> ESP8266 GND
 */
 
 #include <ESP8266WiFi.h>
-#include <SoftwareSerial.h>
-
-// SoftwareSerial(RX pin, TX pin)
-SoftwareSerial raspberryPiSerial(D6, D5);
 
 bool quarantined = false;
 String receivedCommand = "";
 
-void sendResponse(const String &response) {
-  raspberryPiSerial.println(response);
 
-  // USB Serial Monitor debugging
-  Serial.println("[Response] " + response);
+// ============================================================
+// SEND RESPONSE TO RASPBERRY PI
+// ============================================================
+
+void sendResponse(const String &response) {
+  Serial.println(response);
+  Serial.flush();
 }
+
+
+// ============================================================
+// COMMAND FUNCTIONS
+// ============================================================
 
 void performSecurityScan() {
   String deviceState;
@@ -40,6 +48,7 @@ void performSecurityScan() {
   );
 }
 
+
 void quarantineDevice() {
   quarantined = true;
 
@@ -51,16 +60,18 @@ void quarantineDevice() {
   );
 }
 
+
 void restoreDevice() {
   quarantined = false;
 
-  // TRINETRA currently communicates through wired UART.
+  // TRINETRA uses wired UART communication.
   WiFi.mode(WIFI_OFF);
 
   sendResponse(
     "OK|RESTORE|ESP8266 restored to normal operation"
   );
 }
+
 
 void sendTelemetry() {
   String telemetry = "OK|REQUEST_TELEMETRY|";
@@ -80,6 +91,7 @@ void sendTelemetry() {
   sendResponse(telemetry);
 }
 
+
 void restartDevice() {
   sendResponse(
     "OK|RESTART|ESP8266 restart command accepted"
@@ -89,11 +101,14 @@ void restartDevice() {
   ESP.restart();
 }
 
+
+// ============================================================
+// EXECUTE RECEIVED COMMAND
+// ============================================================
+
 void executeCommand(String command) {
   command.trim();
   command.toUpperCase();
-
-  Serial.println("[Command] " + command);
 
   if (command == "QUARANTINE") {
     quarantineDevice();
@@ -117,28 +132,41 @@ void executeCommand(String command) {
   }
 }
 
-void setup() {
-  // USB Serial Monitor
-  Serial.begin(115200);
 
-  // Raspberry Pi UART
-  raspberryPiSerial.begin(9600);
+// ============================================================
+// SETUP
+// ============================================================
+
+void setup() {
+  /*
+    Start hardware UART at 9600 baud.
+
+    Serial.swap() changes UART pins from:
+      RX0 / TX0
+
+    To:
+      GPIO13 / D7 = RX
+      GPIO15 / D8 = TX
+  */
+
+  Serial.begin(9600);
+  Serial.swap();
 
   delay(500);
 
-  // ESP8266 will not connect directly to Wi-Fi.
   WiFi.mode(WIFI_OFF);
-
-  Serial.println();
-  Serial.println("TRINETRA ESP8266 firmware started");
-  Serial.println("Waiting for Raspberry Pi commands...");
 
   sendResponse("READY|TRINETRA_ESP8266");
 }
 
+
+// ============================================================
+// MAIN LOOP
+// ============================================================
+
 void loop() {
-  while (raspberryPiSerial.available() > 0) {
-    char incomingCharacter = raspberryPiSerial.read();
+  while (Serial.available() > 0) {
+    char incomingCharacter = Serial.read();
 
     if (incomingCharacter == '\n') {
       executeCommand(receivedCommand);
@@ -147,10 +175,12 @@ void loop() {
     else if (incomingCharacter != '\r') {
       receivedCommand += incomingCharacter;
 
-      // Prevent accidental memory overflow
       if (receivedCommand.length() > 100) {
         receivedCommand = "";
-        sendResponse("ERROR|INVALID|Command too long");
+
+        sendResponse(
+          "ERROR|INVALID|Command too long"
+        );
       }
     }
   }
