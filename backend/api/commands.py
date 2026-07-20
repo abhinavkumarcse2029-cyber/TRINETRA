@@ -14,6 +14,7 @@ from services.commands import (
 from services.database import (
     get_device,
     insert_audit_log,
+    set_device_quarantine,
 )
 
 router = APIRouter()
@@ -79,9 +80,7 @@ def issue_command(payload: CommandCreate):
             "issued_by": payload.issued_by
         }
 
-        created = create_command(
-            command_data
-        )
+        created = create_command(command_data)
 
         command = (
             created[0]
@@ -121,9 +120,7 @@ def get_device_pending_commands(
     claim: bool = False
 ):
     try:
-        commands = get_pending_commands(
-            device_id
-        )
+        commands = get_pending_commands(device_id)
 
         if claim and commands:
             first_command = commands[0]
@@ -179,14 +176,46 @@ def mark_command_complete(
 
         command = updated[0]
 
+        normalized_status = (
+            str(payload.status)
+            .strip()
+            .lower()
+        )
+
+        command_name = (
+            str(command.get("command", ""))
+            .strip()
+            .upper()
+        )
+
+        device_id = command.get("device_id")
+
+        if normalized_status == "completed" and device_id:
+            if command_name == "QUARANTINE":
+                set_device_quarantine(
+                    device_id=device_id,
+                    quarantined=True,
+                    reason=(
+                        "Quarantined through "
+                        "TRINETRA command pipeline"
+                    )
+                )
+
+            elif command_name == "RESTORE":
+                set_device_quarantine(
+                    device_id=device_id,
+                    quarantined=False,
+                    reason=None
+                )
+
         insert_audit_log({
-            "device_id": command.get("device_id"),
+            "device_id": device_id,
             "action": "device_command_completed",
             "performed_by": "TRINETRA_EDGE_GATEWAY",
             "result": payload.status,
             "details": {
                 "command_id": command_id,
-                "command": command.get("command"),
+                "command": command_name,
                 "response": payload.response
             }
         })

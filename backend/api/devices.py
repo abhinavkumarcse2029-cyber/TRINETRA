@@ -122,12 +122,32 @@ def restore_device(device_id: str):
                 detail="Device not found"
             )
 
+        # Restore device
         updated_device = set_device_quarantine(
             device_id=device_id,
             quarantined=False,
             reason=None
         )
 
+        # Resolve all open alerts for this device
+        supabase.table("alerts").update({
+            "status": "resolved"
+        }).eq(
+            "device_id", device_id
+        ).eq(
+            "status", "open"
+        ).execute()
+
+        # Resolve all open incidents for this device
+        supabase.table("incidents").update({
+            "status": "resolved"
+        }).eq(
+            "device_id", device_id
+        ).eq(
+            "status", "open"
+        ).execute()
+
+        # Audit log
         insert_audit_log({
             "device_id": device_id,
             "action": "device_restored",

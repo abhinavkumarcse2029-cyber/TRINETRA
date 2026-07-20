@@ -27,11 +27,19 @@ def get_device(device_id: str):
 
 
 def update_device_seen(device_id: str):
+    device = get_device(device_id)
+
+    status = (
+        "quarantined"
+        if device and device.get("is_quarantined")
+        else "online"
+    )
+
     response = (
         supabase
         .table("devices")
         .update({
-            "status": "online",
+            "status": status,
             "last_seen": "now()"
         })
         .eq("device_id", device_id)
@@ -46,7 +54,13 @@ def update_device_risk(
     risk_score: int,
     severity: str
 ):
-    status = "warning" if risk_score > 0 else "online"
+    device = get_device(device_id)
+
+    status = (
+        "quarantined"
+        if device and device.get("is_quarantined")
+        else "online"
+    )
 
     response = (
         supabase
@@ -118,11 +132,11 @@ def insert_alert(data: dict):
 # Incident Operations
 # -------------------------------
 
-def insert_incident(incident_data: dict):
+def insert_incident(data: dict):
     response = (
         supabase
         .table("incidents")
-        .insert(incident_data)
+        .insert(data)
         .execute()
     )
 
@@ -130,7 +144,7 @@ def insert_incident(incident_data: dict):
 
 
 # -------------------------------
-# Audit Operations
+# Audit Log Operations
 # -------------------------------
 
 def insert_audit_log(data: dict):
